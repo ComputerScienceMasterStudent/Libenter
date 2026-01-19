@@ -1,123 +1,134 @@
 # Libenter
 Conversational LLM prompter
-Used for multi-prompts with LLMs.
 
-An extensible Python example that demonstrates how to:
-
-- Define a common interface for multiple LLM providers
-- Load providers dynamically via environment variables
-- Run the same prompts against multiple LLMs in one pass
-
-This project uses placeholder responses instead of real API calls, making it safe for local testing and experimentation.
+A simple Python CLI tool to send prompts to multiple LLM providers (OpenAI, Anthropic) with **language support** for English, Hebrew, Arabic, and Farsi.
 
 ---
 
 ## Features
 
--  Pluggable LLM providers (OpenAI, Anthropic, etc.)
--  Simple factory pattern via a registry
--  Environment-variable based configuration
--  Easy to test and extend
--  Zero external dependencies
+* Supports multiple LLM providers via environment variables.
+* Run prompts across all configured LLMs.
+* Specify response language using a command-line flag:
+
+  * English (`en`) – default
+  * Hebrew (`he`)
+  * Arabic (`ar`)
+  * Farsi (`fa`)
+* Easy to extend with new LLMs or languages.
 
 ---
 
-## Project Structure
+## Installation
 
+1. Clone the repository:
+
+```bash
+git clone <repo-url>
+cd <repo-folder>
 ```
 
-.
-├── main.py        # Entry point
-└── README.md
+2. Install dependencies (if any). Currently, no extra dependencies are required for placeholders. For real API calls, install the provider SDKs:
 
-````
+```bash
+pip install openai anthropic
+```
 
 ---
 
-## Configuration
+## Environment Variables
 
-### Environment Variables
-
-| Variable | Description |
-|--------|-------------|
-| `LLM_PROVIDERS` | Comma-separated list of LLM providers to load |
-| `OPENAI_API_KEY` | API key for OpenAI (required if using `openai`) |
-| `ANTHROPIC_API_KEY` | API key for Anthropic (required if using `anthropic`) |
-
-### Example
+Set your API keys and providers:
 
 ```bash
 export LLM_PROVIDERS=openai,anthropic
-export OPENAI_API_KEY=sk-...
-export ANTHROPIC_API_KEY=sk-...
-````
+export OPENAI_API_KEY=your_openai_api_key
+export ANTHROPIC_API_KEY=your_anthropic_api_key
+```
+
+> `LLM_PROVIDERS` must be a comma-separated list of supported providers (`openai`, `anthropic`).
 
 ---
 
 ## Usage
 
-Run the program:
+Run the CLI:
 
 ```bash
-python main.py
+python app.py --lang en
 ```
 
-You’ll be prompted to enter one or more prompts:
+You will be prompted to enter prompts (comma-separated):
 
-```text
-Enter prompts (comma-separated): hello world, explain LLMs
+```
+Enter prompts (comma-separated): Hello, How are you?
 ```
 
-Output will look like:
+### Command-line Options
 
-```text
-Prompt: hello world
-[OpenAI] Response to: hello world
-[Anthropic] Response to: hello world
+| Flag         | Description       | Choices                | Default |
+| ------------ | ----------------- | ---------------------- | ------- |
+| `-l, --lang` | Response language | `en`, `he`, `ar`, `fa` | `en`    |
+
+---
+
+## Example
+
+```bash
+python app.py --lang he
+```
+
+**Input:**
+
+```
+Enter prompts (comma-separated): Hello, How are you?
+```
+
+**Output:**
+
+```
+Prompt: Hello
+[OpenAI][he] Response to: ענה בעברית.
+Hello
+[Anthropic][he] Response to: ענה בעברית.
+Hello
+
+Prompt: How are you?
+[OpenAI][he] Response to: ענה בעברית.
+How are you?
+[Anthropic][he] Response to: ענה בעברית.
+How are you?
+```
+
+> The `[OpenAI][he]` / `[Anthropic][he]` indicates the LLM provider and language.
+
+---
+
+## Adding More Languages
+
+Add your language instruction to `BaseLLM.LANGUAGE_INSTRUCTIONS`:
+
+```python
+LANGUAGE_INSTRUCTIONS = {
+    "en": "Answer in English.",
+    "he": "ענה בעברית.",
+    "ar": "أجب باللغة العربية.",
+    "fa": "به زبان فارسی پاسخ بده.",
+    "es": "Responde en español."  # example new language
+}
 ```
 
 ---
 
-## Adding a New LLM Provider
+## Adding More LLM Providers
 
-1. Create a new subclass of `BaseLLM`
-2. Define the required `ENV_VAR`
-3. Implement `generate()`
-4. Register it in `LLM_REGISTRY`
-
-### Example
-
-```python
-class MyCustomLLM(BaseLLM):
-    ENV_VAR = "MY_LLM_API_KEY"
-
-    def generate(self, prompt: str) -> str:
-        return f"[MyLLM] Response to: {prompt}"
-```
-
-```python
-LLM_REGISTRY["myllm"] = MyCustomLLM
-```
-
-Then enable it:
-
-```bash
-export LLM_PROVIDERS=openai,myllm
-```
-
----
-
-## Error Handling
-
-* Missing API keys raise a `ValueError` at startup
-* Unknown providers fail fast with a clear error
-* Empty prompt input is handled gracefully
+1. Subclass `BaseLLM`.
+2. Define `ENV_VAR` for the API key.
+3. Implement the `generate()` method.
+4. Add the class to `LLM_REGISTRY`.
 
 ---
 
 ## License
 
-GNU
-
-
-```
+GNU License 
