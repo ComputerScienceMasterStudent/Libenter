@@ -1,4 +1,5 @@
 import os
+import argparse
 from typing import Dict, List, Type
 
 
@@ -11,14 +12,27 @@ class BaseLLM:
 
     ENV_VAR: str  # must be defined by subclasses
 
+    LANGUAGE_INSTRUCTIONS = {
+        "en": "Answer in English.",
+        "he": "ענה בעברית.",
+        "ar": "أجب باللغة العربية.",
+        "fa": "به زبان فارسی پاسخ بده.",
+    }
+
     def __init__(self) -> None:
         api_key = os.getenv(self.ENV_VAR)
         if not api_key:
             raise ValueError(f"Missing {self.ENV_VAR}")
         self.api_key = api_key
 
-    def generate(self, prompt: str) -> str:
+    def generate(self, prompt: str, language: str = "en") -> str:
         raise NotImplementedError
+
+    def _apply_language(self, prompt: str, language: str) -> str:
+        instruction = self.LANGUAGE_INSTRUCTIONS.get(language, "")
+        if instruction:
+            return f"{instruction}\n{prompt}"
+        return prompt
 
 
 # -------------------------
@@ -28,17 +42,17 @@ class BaseLLM:
 class OpenAILLM(BaseLLM):
     ENV_VAR = "OPENAI_API_KEY"
 
-    def generate(self, prompt: str) -> str:
-        # Placeholder for real OpenAI call
-        return f"[OpenAI] Response to: {prompt}"
+    def generate(self, prompt: str, language: str = "en") -> str:
+        prompt = self._apply_language(prompt, language)
+        return f"[OpenAI][{language}] Response to: {prompt}"
 
 
 class AnthropicLLM(BaseLLM):
     ENV_VAR = "ANTHROPIC_API_KEY"
 
-    def generate(self, prompt: str) -> str:
-        # Placeholder for real Anthropic call
-        return f"[Anthropic] Response to: {prompt}"
+    def generate(self, prompt: str, language: str = "en") -> str:
+        prompt = self._apply_language(prompt, language)
+        return f"[Anthropic][{language}] Response to: {prompt}"
 
 
 # -------------------------
@@ -78,6 +92,18 @@ def load_llms() -> List[BaseLLM]:
 # -------------------------
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Multi-LLM prompt runner")
+    parser.add_argument(
+        "-l",
+        "--lang",
+        choices=["en", "he", "ar", "fa"],
+        default="en",
+        help="Response language (en, he, ar, fa)",
+    )
+
+    args = parser.parse_args()
+    language = args.lang
+
     llms = load_llms()
 
     user_input = input("Enter prompts (comma-separated): ")
@@ -90,7 +116,7 @@ def main() -> None:
     for prompt in prompts:
         print(f"\nPrompt: {prompt}")
         for llm in llms:
-            print(llm.generate(prompt))
+            print(llm.generate(prompt, language=language))
 
 
 if __name__ == "__main__":
