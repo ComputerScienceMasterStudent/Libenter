@@ -1,19 +1,32 @@
 import os
+from typing import Dict, List, Type
+
 
 # -------------------------
-# LLM client abstractions
+# LLM base abstraction
 # -------------------------
 
 class BaseLLM:
+    """Abstract base class for LLM clients."""
+
+    ENV_VAR: str  # must be defined by subclasses
+
+    def __init__(self) -> None:
+        api_key = os.getenv(self.ENV_VAR)
+        if not api_key:
+            raise ValueError(f"Missing {self.ENV_VAR}")
+        self.api_key = api_key
+
     def generate(self, prompt: str) -> str:
         raise NotImplementedError
 
 
+# -------------------------
+# Concrete LLMs
+# -------------------------
+
 class OpenAILLM(BaseLLM):
-    def __init__(self):
-        self.api_key = os.getenv("OPENAI_API_KEY")
-        if not self.api_key:
-            raise ValueError("Missing OPENAI_API_KEY")
+    ENV_VAR = "OPENAI_API_KEY"
 
     def generate(self, prompt: str) -> str:
         # Placeholder for real OpenAI call
@@ -21,10 +34,7 @@ class OpenAILLM(BaseLLM):
 
 
 class AnthropicLLM(BaseLLM):
-    def __init__(self):
-        self.api_key = os.getenv("ANTHROPIC_API_KEY")
-        if not self.api_key:
-            raise ValueError("Missing ANTHROPIC_API_KEY")
+    ENV_VAR = "ANTHROPIC_API_KEY"
 
     def generate(self, prompt: str) -> str:
         # Placeholder for real Anthropic call
@@ -32,25 +42,33 @@ class AnthropicLLM(BaseLLM):
 
 
 # -------------------------
-# LLM factory
+# LLM registry & factory
 # -------------------------
 
-def load_llms():
+LLM_REGISTRY: Dict[str, Type[BaseLLM]] = {
+    "openai": OpenAILLM,
+    "anthropic": AnthropicLLM,
+}
+
+
+def load_llms() -> List[BaseLLM]:
     providers = os.getenv("LLM_PROVIDERS", "")
-    llms = []
+    if not providers:
+        raise ValueError("No LLM providers configured")
 
-    for provider in providers.split(","):
-        provider = provider.strip().lower()
+    llms: List[BaseLLM] = []
 
-        if provider == "openai":
-            llms.append(OpenAILLM())
-        elif provider == "anthropic":
-            llms.append(AnthropicLLM())
-        elif provider:
-            raise ValueError(f"Unknown LLM provider: {provider}")
+    for name in map(str.strip, providers.split(",")):
+        if not name:
+            continue
+
+        try:
+            llms.append(LLM_REGISTRY[name.lower()]())
+        except KeyError:
+            raise ValueError(f"Unknown LLM provider: {name}")
 
     if not llms:
-        raise ValueError("No LLM providers configured")
+        raise ValueError("No valid LLM providers configured")
 
     return llms
 
@@ -59,13 +77,10 @@ def load_llms():
 # Main logic
 # -------------------------
 
-def main():
+def main() -> None:
     llms = load_llms()
 
-    user_input = input(
-        "Enter prompts (comma-separated): "
-    )
-
+    user_input = input("Enter prompts (comma-separated): ")
     prompts = [p.strip() for p in user_input.split(",") if p.strip()]
 
     if not prompts:
@@ -75,8 +90,7 @@ def main():
     for prompt in prompts:
         print(f"\nPrompt: {prompt}")
         for llm in llms:
-            response = llm.generate(prompt)
-            print(response)
+            print(llm.generate(prompt))
 
 
 if __name__ == "__main__":
