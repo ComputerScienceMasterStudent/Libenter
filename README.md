@@ -119,5 +119,5 @@ export LLM_PROVIDERS=openai,myllm
 
 GNU
 
-Just tell me the vibe 😄
+
 ```
